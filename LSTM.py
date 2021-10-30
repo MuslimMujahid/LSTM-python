@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from random import uniform
 
-data = open("lovecraft.txt").read().lower()
+data = open("lovecraft.txt", encoding="utf-8").read().lower()
 
 chars = set(data)
 vocab_size = len(chars)
@@ -110,7 +111,7 @@ class LSTM:
         do = dh * np.tanh(c)
         da_o = do * o * (1 - 0)
         self.grads["dWo"] += np.dot(da_o, z.T)
-        self.grads["dBo"] += da_o
+        self.grads["dbo"] += da_o
 
         dc = dh * o * (1 - np.tanh(c)**2)
         dc += dc_next
@@ -128,7 +129,7 @@ class LSTM:
         df = dc * c_prev
         da_f = df * f * (1 - f)
         self.grads["dWf"] += np.dot(da_f, z.T)
-        self.grads["dBf"] += da_f
+        self.grads["dbf"] += da_f
 
         dz = (np.dot(self.params["Wf"].T, da_f)
             + np.dot(self.params["Wi"].T, da_i)
@@ -163,6 +164,41 @@ class LSTM:
         for t in reversed(range(self.seq_len)):
             dh_next, dc_next = self.backward_step(y_batch[t], y_hat[t], dh_next, dc_next, c[t-1], z[t], f[t], i[t], c_bar[t], c[t], o[t], h[t])
         return loss, h[self.seq_len-1], c[self.seq_len-1]
+    
+    def gradient_check(self, x, y, h_prev, c_prev, num_checks=10, delta=1e-8):
+        _, _, _ = self.forward_backward(x, y, h_prev, c_prev)
+        grads_numerical = self.grads
+
+        for key in self.params:
+            test = True
+            dims = self.params[key].shape
+            grad_numerical = 0
+            grad_analytical = 0
+
+            for _ in range(num_checks):
+                idx = int(uniform(0, self.params[key].size))
+                old_val = self.params[key].flat[idx]
+
+                self.params[key].flat[idx] = old_val + delta
+                J_plus, _, _ = self.forward_backward(x, y, h_prev, c_prev)
+
+                self.params[key].flat[idx] = old_val - delta
+                J_minus, _, _, = self.forward_backward(x, y, h_prev, c_prev)
+
+                self.params[key].flat[idx] = old_val
+
+                grad_numerical += (J_plus - J_minus) / (2 * delta)
+                grad_analytical += grads_numerical["d" + key].flat[idx]
+
+            grad_numerical /= num_checks
+            grad_analytical /= num_checks
+
+            rel_error = abs(grad_analytical - grad_numerical) / abs(grad_analytical + grad_numerical)
+            if rel_error > 1e-2:
+                if not (grad_analytical < 1e-6 and grad_numerical < 1e-6):
+                    test = False
+                    # assert(test)
+        return
 
     def sample(self, h_prev, c_prev, sample_size):
         x = np.zeros((self.vocab_size, 1))
@@ -198,5 +234,21 @@ class LSTM:
                 J.append(self.smooth_loss)
 
                 if epoch == 0 and j == 0:
-                    self.gradient
+                    self.gradient_check(x_batch, y_batch, h_prev, c_prev, num_checks=10, delta=1e-7)
+                
+                self.clip_grads()
+
+                batch_num = epoch * self.epochs + j / self.seq_len + 1
+                self.update_params(batch_num)
+
+                if verbose:
+                    if j%400000 == 0:
+                        print("Epoch: {}\tBatch: {}-{}\tLoss: {}".format(epoch, j, j + self.seq_len, round(self.smooth_loss, 2)))
+                        s = self.sample(h_prev, c_prev, sample_size=250)
+                        print(s)
+
+        return J, self.params
+
+model = LSTM(char_to_idx, idx_to_char, vocab_size, epochs=5, lr=0.01)
+J, params = model.train(data)
         
