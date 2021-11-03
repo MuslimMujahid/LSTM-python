@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from random import uniform
 
 data = open("lovecraft.txt", encoding="utf-8").read().lower()
@@ -10,6 +10,7 @@ print("Data has %d characters and %d unique chars" % (len(data), vocab_size))
 
 char_to_idx = {w: i for i, w in enumerate(chars)}
 idx_to_char = {i: w for i, w in enumerate(chars)}
+
 
 class LSTM:
     def __init__(self, char_to_idx, idx_to_char, vocab_size, n_h=100, seq_len=25,
@@ -29,23 +30,28 @@ class LSTM:
         std = (1.0/np.sqrt(self.vocab_size + self.n_h))
 
         # forget gate
-        self.params["Wf"] = np.random.randn(self.n_h, self.n_h + self.vocab_size) * std
+        self.params["Wf"] = np.random.randn(
+            self.n_h, self.n_h + self.vocab_size) * std
         self.params["bf"] = np.ones((self.n_h, 1))
 
         # input gate
-        self.params["Wi"] = np.random.randn(self.n_h, self.n_h + self.vocab_size) * std
+        self.params["Wi"] = np.random.randn(
+            self.n_h, self.n_h + self.vocab_size) * std
         self.params["bi"] = np.ones((self.n_h, 1))
 
         # cell gate
-        self.params["Wc"] = np.random.randn(self.n_h, self.n_h + self.vocab_size) * std
+        self.params["Wc"] = np.random.randn(
+            self.n_h, self.n_h + self.vocab_size) * std
         self.params["bc"] = np.ones((self.n_h, 1))
 
         # output gate
-        self.params["Wo"] = np.random.randn(self.n_h, self.n_h + self.vocab_size) * std
+        self.params["Wo"] = np.random.randn(
+            self.n_h, self.n_h + self.vocab_size) * std
         self.params["bo"] = np.ones((self.n_h, 1))
 
         # output
-        self.params["Wv"] = np.random.randn(self.vocab_size, self.n_h) * (1.0/np.sqrt(self.vocab_size))
+        self.params["Wv"] = np.random.randn(
+            self.vocab_size, self.n_h) * (1.0/np.sqrt(self.vocab_size))
         self.params["bv"] = np.zeros((self.vocab_size, 1))
 
         self.grads = {}
@@ -55,7 +61,7 @@ class LSTM:
             self.grads["d" + key] = np.zeros_like(self.params[key])
             self.adams_params["m" + key] = np.zeros_like(self.params[key])
             self.adams_params["v" + key] = np.zeros_like(self.params[key])
-        
+
         self.smooth_loss = -np.log(1.0 / self.vocab_size) * self.seq_len
 
     def sigmoid(self, x):
@@ -64,26 +70,28 @@ class LSTM:
     def softmax(self, x):
         e_x = np.exp(x - np.max(x))
         return e_x / np.sum(e_x)
-    
+
     def clip_grads(self):
         for key in self.grads:
             np.clip(self.grads[key], -5, 5, out=self.grads[key])
         return
-    
+
     def reset_grads(self):
         for key in self.grads:
             self.grads[key].fill(0)
         return
-    
+
     def update_params(self, batch_num):
         for key in self.params:
-            self.adams_params["m" + key] = self.adams_params["m" + key] * self.beta1 + (1 - self.beta1)  * self.grads["d" + key]
-            self.adams_params["v" + key] = self.adams_params["v" + key] * self.beta2 + (1 - self.beta2) * self.grads["d" + key]**2
+            self.adams_params["m" + key] = self.adams_params["m" + key] * \
+                self.beta1 + (1 - self.beta1) * self.grads["d" + key]
+            self.adams_params["v" + key] = self.adams_params["v" + key] * \
+                self.beta2 + (1 - self.beta2) * self.grads["d" + key]**2
             m_corr = self.adams_params["m" + key] / (1 - self.beta1**batch_num)
             v_corr = self.adams_params["v" + key] / (1 - self.beta2**batch_num)
             self.params[key] -= self.lr * m_corr / (np.sqrt(v_corr) + 1e-8)
         return
-    
+
     def forward_step(self, x, h_prev, c_prev):
         z = np.row_stack((h_prev, x))
         f = self.sigmoid(np.dot(self.params["Wf"], z) + self.params["bf"])
@@ -132,10 +140,10 @@ class LSTM:
         self.grads["dbf"] += da_f
 
         dz = (np.dot(self.params["Wf"].T, da_f)
-            + np.dot(self.params["Wi"].T, da_i)
-            + np.dot(self.params["Wc"].T, da_c)
-            + np.dot(self.params["Wo"].T, da_o)
-        )
+              + np.dot(self.params["Wi"].T, da_i)
+              + np.dot(self.params["Wc"].T, da_c)
+              + np.dot(self.params["Wo"].T, da_o)
+              )
 
         dh_prev = dz[:self.n_h, :]
         dc_prev = f * dc
@@ -144,7 +152,7 @@ class LSTM:
     def forward_backward(self, x_batch, y_batch, h_prev, c_prev):
         x, z, f, i, c_bar, c, o, y_hat, v, h = {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
 
-        #init t_-1
+        # init t_-1
         h[-1] = h_prev
         c[-1] = c_prev
 
@@ -153,7 +161,8 @@ class LSTM:
             x[t] = np.zeros((self.vocab_size, 1))
             x[t][x_batch[t]] = 1
 
-            y_hat[t], v[t], h[t], o[t], c[t], c_bar[t], i[t], f[t], z[t] = self.forward_step(x[t], h[t-1], c[t-1])
+            y_hat[t], v[t], h[t], o[t], c[t], c_bar[t], i[t], f[t], z[t] = self.forward_step(
+                x[t], h[t-1], c[t-1])
             loss += -np.log(y_hat[t][y_batch[t], 0])
 
         self.reset_grads()
@@ -162,9 +171,10 @@ class LSTM:
         dc_next = np.zeros_like(c[0])
 
         for t in reversed(range(self.seq_len)):
-            dh_next, dc_next = self.backward_step(y_batch[t], y_hat[t], dh_next, dc_next, c[t-1], z[t], f[t], i[t], c_bar[t], c[t], o[t], h[t])
+            dh_next, dc_next = self.backward_step(
+                y_batch[t], y_hat[t], dh_next, dc_next, c[t-1], z[t], f[t], i[t], c_bar[t], c[t], o[t], h[t])
         return loss, h[self.seq_len-1], c[self.seq_len-1]
-    
+
     def gradient_check(self, x, y, h_prev, c_prev, num_checks=10, delta=1e-8):
         _, _, _ = self.forward_backward(x, y, h_prev, c_prev)
         grads_numerical = self.grads
@@ -193,7 +203,8 @@ class LSTM:
             grad_numerical /= num_checks
             grad_analytical /= num_checks
 
-            rel_error = abs(grad_analytical - grad_numerical) / abs(grad_analytical + grad_numerical)
+            rel_error = abs(grad_analytical - grad_numerical) / \
+                abs(grad_analytical + grad_numerical)
             if rel_error > 1e-2:
                 if not (grad_analytical < 1e-6 and grad_numerical < 1e-6):
                     test = False
@@ -215,7 +226,7 @@ class LSTM:
             sample_string += char
 
         return sample_string
-    
+
     def train(self, X, verbose=True):
         J = []
         num_batches = len(X)
@@ -226,29 +237,35 @@ class LSTM:
             c_prev = np.zeros((self.n_h, 1))
 
             for j in range(0, len(X_trimmed) - self.seq_len, self.seq_len):
-                x_batch = [self.char_to_idx[ch] for ch in X_trimmed[j: j + self.seq_len]]
-                y_batch = [self.char_to_idx[ch] for ch in X_trimmed[j + 1: j + self.seq_len + 1]]
+                x_batch = [self.char_to_idx[ch]
+                           for ch in X_trimmed[j: j + self.seq_len]]
+                y_batch = [self.char_to_idx[ch]
+                           for ch in X_trimmed[j + 1: j + self.seq_len + 1]]
 
-                loss, h_prev, c_prev = self.forward_backward(x_batch, y_batch, h_prev, c_prev)
+                loss, h_prev, c_prev = self.forward_backward(
+                    x_batch, y_batch, h_prev, c_prev)
                 self.smooth_loss = self.smooth_loss * 0.999 + loss * 0.001
                 J.append(self.smooth_loss)
 
                 if epoch == 0 and j == 0:
-                    self.gradient_check(x_batch, y_batch, h_prev, c_prev, num_checks=10, delta=1e-7)
-                
+                    self.gradient_check(
+                        x_batch, y_batch, h_prev, c_prev, num_checks=10, delta=1e-7)
+
                 self.clip_grads()
 
                 batch_num = epoch * self.epochs + j / self.seq_len + 1
                 self.update_params(batch_num)
 
                 if verbose:
-                    if j%400000 == 0:
-                        print("Epoch: {}\tBatch: {}-{}\tLoss: {}".format(epoch, j, j + self.seq_len, round(self.smooth_loss, 2)))
+                    if j % 400000 == 0:
+                        print("Epoch: {}\tBatch: {}-{}\tLoss: {}".format(epoch,
+                              j, j + self.seq_len, round(self.smooth_loss, 2)))
                         s = self.sample(h_prev, c_prev, sample_size=250)
                         print(s)
 
         return J, self.params
 
-model = LSTM(char_to_idx, idx_to_char, vocab_size, epochs=5, lr=0.01)
-J, params = model.train(data)
-        
+
+# model = LSTM(char_to_idx, idx_to_char, vocab_size, epochs=5, lr=0.01)
+# J, params = model.train(data)
+print(idx_to_char)
