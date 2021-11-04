@@ -19,8 +19,9 @@ def main():
 
     # Create model
     model = Sequential()
-    model.add(layers.LSTM(input_shape=(1, 4, 6)))
-    model.predict(dataset)
+    model.add(layers.LSTM(64, input_shape=(1, 4, 6)))
+    prediction = model.predict(dataset)
+    print(prediction)
 
 
 if __name__ == '__main__':
