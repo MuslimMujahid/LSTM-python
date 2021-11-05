@@ -3,11 +3,17 @@ from random import uniform
 from .functions import ACTIVATION_FUNCTIONS
 from .util import TimeseriesDataset
 
+class Layer:
+    def __init__(self, type: str, input_shape: tuple) -> None:
+        self.type = type
+        self.input_shape = input_shape
 
-class Dense:
-    def __init__(self, units, activation="linear", name="dense", input_shape=None, bias=None):
+class Dense(Layer):
+    def __init__(self, units, name, activation="linear", type = "dense", input_shape=None, bias=None):
+        super().__init__(type, input_shape)
         self.activation = activation
         self.units = units
+        self.name = name
         self.bias = bias
 
     def __call__(self, x):
@@ -15,10 +21,10 @@ class Dense:
 
     def forward(self, x):
         if (self.bias is not None):
-            self.input = np.append(X, np.reshape(
-                [self.bias for _ in range(X.shape[0])], (X.shape[0], 1)), axis=1)
+            self.input = np.append(x, np.reshape(
+                [self.bias for _ in range(x.shape[0])], (x.shape[0], 1)), axis=1)
         else:
-            self.input = X
+            self.input = x
 
         input_size = self.input.shape[0 if len(self.input.shape) == 1 else 1]
 
@@ -31,7 +37,7 @@ class Dense:
 
 
 class Cell:
-    def __init__(self, n_h, input_shape):
+    def __init__(self, n_h, input_shape, name: str = "cell"):
         self.n_h = n_h
         self.batch_size, self.seq_len, self.n_features = input_shape
         self.params = {}
@@ -86,11 +92,13 @@ class Cell:
         return self.params["c"], self.params["h"]
 
 
-class LSTM:
-    def __init__(self, n_h, input_shape, output_activation="linear"):
+class LSTM(Layer):
+    def __init__(self, n_h, input_shape, name, output_activation="linear", type = "LSTM"):
+        super().__init__(type, input_shape)
         self.input_shape = input_shape
         self.batch_size, self.seq_len, self.n_features = self.input_shape
         self.n_h = n_h
+        self.name = name
         self.output_activation = ACTIVATION_FUNCTIONS[output_activation]
 
     def forward(self, x):
