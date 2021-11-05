@@ -20,14 +20,6 @@ def main():
     dataset_train['Market Cap'] = pd.to_numeric(dataset_train['Market Cap'])
     # print(dataset_train)
 
-    # dataset = dataset.drop(columns=['Date'])
-    # dataset['Volume'] = dataset['Volume'].apply(
-    #     lambda x: x.replace(',', ''))
-    # dataset['Market Cap'] = dataset['Market Cap'].apply(
-    #     lambda x: x.replace(',', ''))
-    # dataset['Volume'] = pd.to_numeric(dataset['Volume'])
-    # dataset['Market Cap'] = pd.to_numeric(dataset['Market Cap'])
-
     # Create model
     model = Sequential()
     model.add(layers.LSTM(64, input_shape=(1, 4, 6), name='lstm_1'))
